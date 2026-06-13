@@ -1,0 +1,697 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="header-row">
+    <div class="page-title">
+        <h1>Active Orders Panel</h1>
+        <p>Monitor eyewear fulfillment cycles, verify lens stock, and mitigate SLA breaches in real-time.</p>
+    </div>
+    <div>
+        <a href="/order-intake" class="btn"><span>+</span> New Order Intake</a>
+    </div>
+</div>
+
+<!-- Metrics Overview Card Row -->
+<div class="metrics-grid">
+    <div class="glass-card metric-card">
+        <div class="metric-icon">👓</div>
+        <div class="metric-info">
+            <h3>Active Queue</h3>
+            <div class="metric-value" id="metric-active">-</div>
+        </div>
+    </div>
+    <div class="glass-card metric-card" style="border-color: rgba(244, 63, 94, 0.15)">
+        <div class="metric-icon" style="color: var(--color-high);">🚨</div>
+        <div class="metric-info">
+            <h3>SLA Breach Risk</h3>
+            <div class="metric-value" id="metric-breaches" style="color: var(--color-high);">-</div>
+        </div>
+    </div>
+    <div class="glass-card metric-card">
+        <div class="metric-icon">📦</div>
+        <div class="metric-info">
+            <h3>In-House Stock Rate</h3>
+            <div class="metric-value" id="metric-stock-rate">-</div>
+        </div>
+    </div>
+    <div class="glass-card metric-card">
+        <div class="metric-icon">⏱️</div>
+        <div class="metric-info">
+            <h3>Avg TAT (Completed)</h3>
+            <div class="metric-value" id="metric-avg-tat">-</div>
+        </div>
+    </div>
+</div>
+
+<!-- Filters Panel -->
+<div class="glass-card filter-bar">
+    <div class="filter-group">
+        <label for="filter-status">Stage:</label>
+        <select id="filter-status" class="filter-select" onchange="loadOrders()">
+            <option value="">All Stages</option>
+            <option value="Placed">Order Placed</option>
+            <option value="Lab Intake">Lab Intake</option>
+            <option value="Surfacing">Surfacing</option>
+            <option value="Coating">Coating</option>
+            <option value="Glazing">Glazing</option>
+            <option value="QC">Quality Check (QC)</option>
+            <option value="Dispatched">Dispatched</option>
+        </select>
+    </div>
+    <div class="filter-group">
+        <label for="filter-lens">Lens Type:</label>
+        <select id="filter-lens" class="filter-select" onchange="loadOrders()">
+            <option value="">All Lens Types</option>
+            <option value="Single Vision">Single Vision</option>
+            <option value="Bifocal">Bifocal</option>
+            <option value="Progressive">Progressive</option>
+        </select>
+    </div>
+    <div class="filter-group">
+        <label for="filter-location">Location:</label>
+        <select id="filter-location" class="filter-select" onchange="loadOrders()">
+            <option value="">All Locations</option>
+            <option value="Downtown">Downtown</option>
+            <option value="Uptown">Uptown</option>
+            <option value="Westside">Westside</option>
+            <option value="Eastside">Eastside</option>
+        </select>
+    </div>
+    <div class="filter-group">
+        <label for="filter-risk">Breach Risk:</label>
+        <select id="filter-risk" class="filter-select" onchange="loadOrders()">
+            <option value="">All Risks</option>
+            <option value="Low">Low Risk</option>
+            <option value="Medium">Medium Risk</option>
+            <option value="High">High Risk</option>
+        </select>
+    </div>
+    <button class="btn btn-secondary" onclick="resetFilters()" style="margin-left: auto; padding: 0.5rem 1rem; font-size: 0.85rem;">Clear Filters</button>
+</div>
+
+<!-- Active Orders Grid -->
+<div class="orders-grid" id="orders-container">
+    <!-- Rendered dynamically -->
+    <div style="grid-column: 1/-1; text-align: center; padding: 3rem; color: var(--text-secondary);">
+        Loading order records...
+    </div>
+</div>
+
+<!-- Historical Completed Title (Collapsible Reference) -->
+<h2 style="font-size: 1.25rem; margin: 3rem 0 1.5rem 0; color: var(--text-secondary);">Recently Completed Orders (Delivered)</h2>
+<div class="orders-grid" id="delivered-container">
+    <!-- Completed list -->
+</div>
+
+<!-- Detailed Order Drawer/Modal -->
+<div class="modal-overlay" id="detail-modal" onclick="closeModal(event)">
+    <div class="modal-content" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <div>
+                <h2 id="modal-order-no" style="font-size: 1.5rem;">ORD-2026-XXXX</h2>
+                <span id="modal-customer" style="color: var(--text-secondary); font-size: 1.1rem; font-weight: 500;">Patient Name</span>
+            </div>
+            <button class="modal-close" onclick="closeModal()">✕</button>
+        </div>
+        
+        <!-- Interactive Stage Progress Stepper -->
+        <div class="stage-timeline">
+            <div class="stage-timeline-fill" id="modal-timeline-fill" style="width: 0%;"></div>
+            <div class="stage-node" data-stage="Placed" onclick="selectStage('Placed')">
+                <div class="stage-dot">✓</div>
+                <div class="stage-label">Placed</div>
+            </div>
+            <div class="stage-node" data-stage="Lab Intake" onclick="selectStage('Lab Intake')">
+                <div class="stage-dot">✓</div>
+                <div class="stage-label">Lab Intake</div>
+            </div>
+            <div class="stage-node" data-stage="Surfacing" onclick="selectStage('Surfacing')">
+                <div class="stage-dot">✓</div>
+                <div class="stage-label">Surfacing</div>
+            </div>
+            <div class="stage-node" data-stage="Coating" onclick="selectStage('Coating')">
+                <div class="stage-dot">✓</div>
+                <div class="stage-label">Coating</div>
+            </div>
+            <div class="stage-node" data-stage="Glazing" onclick="selectStage('Glazing')">
+                <div class="stage-dot">✓</div>
+                <div class="stage-label">Glazing</div>
+            </div>
+            <div class="stage-node" data-stage="QC" onclick="selectStage('QC')">
+                <div class="stage-dot">✓</div>
+                <div class="stage-label">QC</div>
+            </div>
+            <div class="stage-node" data-stage="Dispatched" onclick="selectStage('Dispatched')">
+                <div class="stage-dot">✓</div>
+                <div class="stage-label">Dispatched</div>
+            </div>
+            <div class="stage-node" data-stage="Delivered" onclick="selectStage('Delivered')">
+                <div class="stage-dot">✓</div>
+                <div class="stage-label">Delivered</div>
+            </div>
+        </div>
+
+        <div class="detail-grid">
+            <!-- Left Column: Details & Audit Trail -->
+            <div>
+                <div class="info-section">
+                    <h3 class="section-title">Prescription Parameters</h3>
+                    <table class="prescription-table">
+                        <thead>
+                            <tr>
+                                <th>Eye</th>
+                                <th>SPH</th>
+                                <th>CYL</th>
+                                <th>AXIS</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td style="font-weight: 600;">O.D. (Right)</td>
+                                <td id="modal-sph-r">-</td>
+                                <td id="modal-cyl-r">-</td>
+                                <td id="modal-axis-r">-</td>
+                            </tr>
+                            <tr>
+                                <td style="font-weight: 600;">O.S. (Left)</td>
+                                <td id="modal-sph-l">-</td>
+                                <td id="modal-cyl-l">-</td>
+                                <td id="modal-axis-l">-</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
+                        <div>
+                            <span style="font-size: 0.8rem; color: var(--text-secondary);">Lens Type</span>
+                            <div id="modal-lens-type" style="font-weight: 600;">-</div>
+                        </div>
+                        <div>
+                            <span style="font-size: 0.8rem; color: var(--text-secondary);">Refractive Index</span>
+                            <div id="modal-lens-index" style="font-weight: 600;">-</div>
+                        </div>
+                        <div>
+                            <span style="font-size: 0.8rem; color: var(--text-secondary);">Coating Treatment</span>
+                            <div id="modal-coating" style="font-weight: 600;">-</div>
+                        </div>
+                        <div>
+                            <span style="font-size: 0.8rem; color: var(--text-secondary);">Frame Model</span>
+                            <div id="modal-frame" style="font-weight: 600;">-</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Status Update Section -->
+                <div class="info-section glass-card" style="padding: 1.25rem; background: rgba(255, 255, 255, 0.01);">
+                    <h3 style="font-size: 1rem; margin-bottom: 0.75rem;">Fulfillment Action Panel</h3>
+                    <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                        <div class="form-group" style="flex: 1; min-width: 150px;">
+                            <label for="status-selector" style="font-size: 0.8rem;">Advance Stage / Set Action:</label>
+                            <select id="status-selector" class="filter-select" style="padding: 0.5rem 1rem;">
+                                <option value="Placed">Order Placed</option>
+                                <option value="Lab Intake">Lab Intake</option>
+                                <option value="Surfacing">Surfacing</option>
+                                <option value="Coating">Coating</option>
+                                <option value="Glazing">Glazing</option>
+                                <option value="QC">Quality Check (QC)</option>
+                                <option value="QC_FAIL_SURFACING">❌ QC Failed (Send back to Surfacing)</option>
+                                <option value="QC_FAIL_COATING">❌ QC Failed (Send back to Coating)</option>
+                                <option value="Dispatched">Dispatched</option>
+                                <option value="Delivered">Delivered</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="flex: 1.5; min-width: 200px;">
+                            <label for="delay-reason-input" style="font-size: 0.8rem;">Delay / Audit Notes (Mandatory if delayed):</label>
+                            <input type="text" id="delay-reason-input" class="form-input" style="padding: 0.45rem 0.75rem; font-size: 0.9rem;" placeholder="Log reasoning for audit trace...">
+                        </div>
+                        <div style="display: flex; align-items: flex-end;">
+                            <button class="btn" onclick="submitStatusUpdate()" style="padding: 0.5rem 1.25rem;">Apply Update</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="info-section">
+                    <h3 class="section-title">Order Audit Log</h3>
+                    <ul class="history-timeline" id="modal-history">
+                        <!-- Loaded dynamically -->
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Right Column: AI predictions & Communications -->
+            <div>
+                <!-- Inventory Match Indicator -->
+                <div class="glass-card" style="margin-bottom: 1.5rem; text-align: center; border-color: rgba(255,255,255,0.05);">
+                    <div style="font-size: 0.8rem; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 0.25rem;">Lens Inventory Match</div>
+                    <div id="modal-stock-badge" class="badge" style="font-size: 0.9rem; padding: 0.35rem 1rem;">Checking...</div>
+                    <div id="modal-stock-desc" style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem;">-</div>
+                </div>
+
+                <!-- SLA & Remaining Time -->
+                <div class="glass-card" style="margin-bottom: 1.5rem; display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; text-align: center;">
+                    <div>
+                        <div style="font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase;">Total SLA</div>
+                        <div id="modal-sla-total" style="font-size: 1.25rem; font-weight: 700; font-family: var(--font-heading); margin-top: 0.25rem;">-</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase;">Time Left</div>
+                        <div id="modal-sla-left" style="font-size: 1.25rem; font-weight: 700; font-family: var(--font-heading); margin-top: 0.25rem;">-</div>
+                    </div>
+                </div>
+
+                <!-- AI Insights Panel -->
+                <div class="ai-insights-panel" id="modal-ai-panel">
+                    <div class="ai-header">
+                        <span class="ai-sparkle">✨</span>
+                        <span>Eluno AI Operations Analyst</span>
+                        <div class="badge" id="modal-ai-risk" style="margin-left: auto;">Low</div>
+                    </div>
+                    
+                    <div class="ai-analysis-text" id="modal-ai-analysis">
+                        Analyzing order configurations...
+                    </div>
+                    
+                    <div class="ai-rec-box">
+                        <strong>Action Plan:</strong>
+                        <span id="modal-ai-rec">Proceeding as scheduled.</span>
+                    </div>
+
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 0.75rem;">
+                        <span style="font-size: 0.75rem; color: var(--text-muted);" id="modal-ai-conf">Conf: 100%</span>
+                        <button class="btn btn-secondary" onclick="triggerAiRefresh()" style="padding: 0.25rem 0.5rem; font-size: 0.75rem; display: inline-flex; gap: 0.25rem; font-family: var(--font-body);">
+                            🔄 Force Recalculate
+                        </button>
+                    </div>
+
+                    <!-- Communication Alerts -->
+                    <div class="template-container">
+                        <div class="template-box">
+                            <div class="template-label">AI Email Breach Alert Template</div>
+                            <textarea id="modal-email-temp" class="template-textarea" readonly></textarea>
+                            <button class="btn btn-secondary" onclick="copyText('modal-email-temp')" style="padding: 0.2rem; font-size: 0.7rem; margin-top: 0.15rem; align-self: flex-end;">Copy Email</button>
+                        </div>
+                        <div class="template-box">
+                            <div class="template-label">AI WhatsApp Notification Template</div>
+                            <textarea id="modal-wa-temp" class="template-textarea" readonly style="height: 50px;"></textarea>
+                            <button class="btn btn-secondary" onclick="copyText('modal-wa-temp')" style="padding: 0.2rem; font-size: 0.7rem; margin-top: 0.15rem; align-self: flex-end;">Copy WhatsApp</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let activeOrders = [];
+    let deliveredOrders = [];
+    let selectedOrder = null;
+    
+    // Stages mapping in index
+    const STAGE_LIST = ['Placed', 'Lab Intake', 'Surfacing', 'Coating', 'Glazing', 'QC', 'Dispatched', 'Delivered'];
+
+    window.onload = function() {
+        loadMetrics();
+        loadOrders();
+        setInterval(loadMetrics, 15000);
+        setInterval(loadOrders, 15000);
+    };
+
+    async function loadMetrics() {
+        try {
+            const res = await fetch('/api/metrics');
+            if (res.ok) {
+                const data = await res.json();
+                document.getElementById('metric-active').textContent = data.active_orders;
+                document.getElementById('metric-breaches').textContent = data.predicted_breaches;
+                document.getElementById('metric-stock-rate').textContent = data.stock_rate_percent + '%';
+                document.getElementById('metric-avg-tat').textContent = data.average_tat_hours + 'h';
+            }
+        } catch (err) {
+            console.error('Failed to load metrics', err);
+        }
+    }
+
+    async function loadOrders() {
+        const status = document.getElementById('filter-status').value;
+        const lens = document.getElementById('filter-lens').value;
+        const location = document.getElementById('filter-location').value;
+        const risk = document.getElementById('filter-risk').value;
+
+        let url = '/api/orders?';
+        if (status) url += `status=${encodeURIComponent(status)}&`;
+        if (lens) url += `lens_type=${encodeURIComponent(lens)}&`;
+        if (location) url += `store_location=${encodeURIComponent(location)}&`;
+        if (risk) url += `breach_risk=${encodeURIComponent(risk)}&`;
+
+        try {
+            const res = await fetch(url);
+            if (res.ok) {
+                const data = await res.json();
+                activeOrders = data.active;
+                deliveredOrders = data.delivered;
+                
+                renderOrders();
+            }
+        } catch (err) {
+            console.error('Failed to load orders', err);
+        }
+    }
+
+    function renderOrders() {
+        const container = document.getElementById('orders-container');
+        if (activeOrders.length === 0) {
+            container.innerHTML = `
+                <div style="grid-column: 1/-1; text-align: center; padding: 4rem; color: var(--text-secondary);">
+                    No active orders found matching the filter criteria.
+                </div>
+            `;
+        } else {
+            container.innerHTML = activeOrders.map(order => {
+                const elapsed = calculateElapsedHours(order.created_at);
+                const percent = Math.min(Math.round((elapsed / order.sla_hours) * 100), 100);
+                const progressFill = Math.round((STAGE_LIST.indexOf(order.status) / (STAGE_LIST.length - 1)) * 100);
+                const timeLeft = Math.round(order.sla_hours - elapsed);
+                const riskClass = order.predicted_breach_risk ? `risk-${order.predicted_breach_risk.toLowerCase()}` : 'risk-low';
+                const pulseClass = order.predicted_breach_risk === 'High' ? 'pulsate-border' : '';
+                
+                const timeStr = timeLeft < 0 
+                    ? `<span class="sla-time breached">Breached by ${Math.abs(timeLeft)}h</span>` 
+                    : `<span class="sla-time ${timeLeft < 12 ? 'warning' : 'safe'}">${timeLeft}h remaining</span>`;
+
+                return `
+                    <div class="glass-card order-card ${riskClass} ${pulseClass}" onclick="openOrderDetail(${order.id})">
+                        <div class="order-card-header">
+                            <div>
+                                <div class="order-no">${order.order_number}</div>
+                                <div class="order-date">${formatDate(order.created_at)}</div>
+                            </div>
+                            <span class="badge badge-risk-${(order.predicted_breach_risk || 'Low').toLowerCase()}">${order.predicted_breach_risk || 'Low'} Risk</span>
+                        </div>
+                        
+                        <div class="patient-name">${order.customer_name}</div>
+                        
+                        <div class="lens-specs">
+                            <span>${order.lens_type}</span>
+                            <span>Idx ${order.lens_index}</span>
+                            <span>${order.coating !== 'None' ? order.coating : 'No Coating'}</span>
+                        </div>
+
+                        <div class="prescription-brief">
+                            <div><span class="eye-badge">R</span> SPH ${order.sph_right.toFixed(2)} | CYL ${order.cyl_right.toFixed(2)}</div>
+                            <div><span class="eye-badge">L</span> SPH ${order.sph_left.toFixed(2)} | CYL ${order.cyl_left.toFixed(2)}</div>
+                        </div>
+
+                        <div class="progress-container">
+                            <div class="progress-header">
+                                <span style="font-weight: 500; color: var(--accent-teal);">${order.status}</span>
+                                <span>${progressFill}% done</span>
+                            </div>
+                            <div class="progress-bar-bg">
+                                <div class="progress-bar-fill" style="width: ${progressFill}%"></div>
+                            </div>
+                        </div>
+
+                        <div class="sla-countdown">
+                            <span style="font-size: 0.8rem; color: var(--text-secondary);">${order.store_location} Store</span>
+                            ${timeStr}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Render Delivered Orders
+        const deliveredContainer = document.getElementById('delivered-container');
+        if (deliveredOrders.length === 0) {
+            deliveredContainer.innerHTML = `
+                <div style="grid-column: 1/-1; text-align: center; padding: 2rem; color: var(--text-muted); font-size: 0.9rem;">
+                    No completed orders recently.
+                </div>
+            `;
+        } else {
+            deliveredContainer.innerHTML = deliveredOrders.map(order => `
+                <div class="glass-card order-card" style="opacity: 0.7; cursor: pointer; border-color: rgba(255,255,255,0.03);" onclick="openOrderDetail(${order.id})">
+                    <div class="order-card-header">
+                        <div>
+                            <div class="order-no" style="color: var(--text-muted);">${order.order_number}</div>
+                            <div class="order-date">${formatDate(order.created_at)}</div>
+                        </div>
+                        <span class="badge" style="background: rgba(255,255,255,0.05); color: var(--text-secondary);">Delivered</span>
+                    </div>
+                    <div class="patient-name" style="color: var(--text-secondary);">${order.customer_name}</div>
+                    <div class="lens-specs" style="margin-bottom: 0;">
+                        <span>${order.lens_type}</span>
+                        <span>Idx ${order.lens_index}</span>
+                        <span>${order.store_location}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+    }
+
+    async function openOrderDetail(orderId) {
+        try {
+            const res = await fetch(`/api/orders/${orderId}`);
+            if (res.ok) {
+                const data = await res.json();
+                selectedOrder = data.order;
+                
+                // Show modal overlay
+                const modal = document.getElementById('detail-modal');
+                modal.classList.add('active');
+                
+                // Populate text fields
+                document.getElementById('modal-order-no').textContent = selectedOrder.order_number;
+                document.getElementById('modal-customer').textContent = selectedOrder.customer_name;
+                
+                document.getElementById('modal-sph-r').textContent = selectedOrder.sph_right.toFixed(2);
+                document.getElementById('modal-cyl-r').textContent = selectedOrder.cyl_right.toFixed(2);
+                document.getElementById('modal-axis-r').textContent = selectedOrder.axis_right;
+                document.getElementById('modal-sph-l').textContent = selectedOrder.sph_left.toFixed(2);
+                document.getElementById('modal-cyl-l').textContent = selectedOrder.cyl_left.toFixed(2);
+                document.getElementById('modal-axis-l').textContent = selectedOrder.axis_left;
+                
+                document.getElementById('modal-lens-type').textContent = selectedOrder.lens_type;
+                document.getElementById('modal-lens-index').textContent = selectedOrder.lens_index.toFixed(2);
+                document.getElementById('modal-coating').textContent = selectedOrder.coating;
+                document.getElementById('modal-frame').textContent = selectedOrder.frame;
+                
+                // Set SLA display
+                const elapsed = data.elapsed_hours;
+                const remaining = data.remaining_sla_hours;
+                document.getElementById('modal-sla-total').textContent = selectedOrder.sla_hours + ' hrs';
+                const slaLeftEl = document.getElementById('modal-sla-left');
+                if (selectedOrder.status === 'Delivered') {
+                    slaLeftEl.textContent = 'Completed';
+                    slaLeftEl.className = 'sla-time safe';
+                } else if (remaining < 0) {
+                    slaLeftEl.textContent = `Breached (${Math.abs(Math.round(remaining))}h)`;
+                    slaLeftEl.className = 'sla-time breached';
+                } else {
+                    slaLeftEl.textContent = Math.round(remaining) + ' hrs';
+                    slaLeftEl.className = remaining < 12 ? 'sla-time warning' : 'sla-time safe';
+                }
+                
+                // Set stock match
+                const stockBadge = document.getElementById('modal-stock-badge');
+                const stockDesc = document.getElementById('modal-stock-desc');
+                if (selectedOrder.is_in_stock === 1) {
+                    stockBadge.textContent = 'In Stock';
+                    stockBadge.className = 'badge badge-stock-in';
+                    stockDesc.textContent = 'Power matched finished inventory blanks in lab stock.';
+                } else {
+                    stockBadge.textContent = 'Custom Order';
+                    stockBadge.className = 'badge badge-stock-out';
+                    stockDesc.textContent = 'Power requires custom casting/procurement (+24-48h lead).';
+                }
+
+                // AI panel populate
+                const riskBadge = document.getElementById('modal-ai-risk');
+                const risk = selectedOrder.predicted_breach_risk || 'Low';
+                riskBadge.textContent = risk;
+                riskBadge.className = `badge badge-risk-${risk.toLowerCase()}`;
+                
+                const aiPanel = document.getElementById('modal-ai-panel');
+                if (risk === 'High') {
+                    aiPanel.className = 'ai-insights-panel high-risk';
+                } else {
+                    aiPanel.className = 'ai-insights-panel';
+                }
+                
+                document.getElementById('modal-ai-analysis').textContent = selectedOrder.ai_analysis || 'AI is predicting standard execution flow durations.';
+                document.getElementById('modal-ai-rec').textContent = selectedOrder.action_recommendation || 'Standard queue monitoring.';
+                
+                // AI confidence
+                let conf = 95;
+                if (risk === 'High') conf = 88;
+                if (selectedOrder.qc_fail_count > 0) conf = 92;
+                document.getElementById('modal-ai-conf').textContent = `AI Confidence: ${conf}%`;
+                
+                // Templates
+                document.getElementById('modal-email-temp').value = selectedOrder.alert_email_template || '';
+                document.getElementById('modal-wa-temp').value = selectedOrder.alert_whatsapp_template || '';
+                
+                // Clear delays reason text field
+                document.getElementById('delay-reason-input').value = selectedOrder.delay_reason || '';
+                
+                // Set Action Selector
+                document.getElementById('status-selector').value = selectedOrder.status;
+
+                // Setup Stepper timeline
+                updateTimelineStepper(selectedOrder.status);
+                
+                // Render histories
+                renderAuditLogs(data.history);
+            }
+        } catch (err) {
+            console.error('Failed to load order details', err);
+        }
+    }
+
+    function updateTimelineStepper(currentStatus) {
+        const currentIdx = STAGE_LIST.indexOf(currentStatus);
+        const nodes = document.querySelectorAll('.stage-node');
+        
+        nodes.forEach(node => {
+            const stage = node.getAttribute('data-stage');
+            const idx = STAGE_LIST.indexOf(stage);
+            
+            node.classList.remove('completed', 'current');
+            
+            if (idx < currentIdx) {
+                node.classList.add('completed');
+            } else if (idx === currentIdx) {
+                node.classList.add('current');
+            }
+        });
+        
+        // Update line fill
+        const fillPercent = currentIdx === 0 ? 0 : Math.round((currentIdx / (STAGE_LIST.length - 1)) * 100);
+        document.getElementById('modal-timeline-fill').style.width = fillPercent + '%';
+    }
+
+    function selectStage(stage) {
+        // Quick select stage in dropdown on clicking timeline node
+        document.getElementById('status-selector').value = stage;
+    }
+
+    function renderAuditLogs(history) {
+        const histEl = document.getElementById('modal-history');
+        if (history.length === 0) {
+            histEl.innerHTML = `<li style="font-size: 0.85rem; color: var(--text-muted);">No history events tracked yet.</li>`;
+        } else {
+            histEl.innerHTML = history.map((item, idx) => {
+                const cls = idx === history.length - 1 ? 'first' : '';
+                return `
+                    <li class="history-item ${cls}">
+                        <div class="history-time">${formatDate(item.changed_at)} by ${item.changed_by}</div>
+                        <div class="history-action">${item.from_status} ➜ ${item.to_status}</div>
+                        <div class="history-reason">${item.reason || 'No audit comments.'}</div>
+                    </li>
+                `;
+            }).join('');
+        }
+    }
+
+    async function submitStatusUpdate() {
+        if (!selectedOrder) return;
+        
+        let targetStatus = document.getElementById('status-selector').value;
+        const reason = document.getElementById('delay-reason-input').value;
+        
+        // Handle QC failures loopback translations
+        let backendStatus = targetStatus;
+        let isQcFail = false;
+        if (targetStatus === 'QC_FAIL_SURFACING') {
+            backendStatus = 'Surfacing';
+            isQcFail = true;
+        } else if (targetStatus === 'QC_FAIL_COATING') {
+            backendStatus = 'Coating';
+            isQcFail = true;
+        }
+
+        // If high risk or setting QC Fail, log reason is required
+        if ((isQcFail || selectedOrder.predicted_breach_risk === 'High') && !reason.trim()) {
+            alert("A delay note is required when assigning QC failures or managing delayed high-risk orders.");
+            return;
+        }
+
+        try {
+            const res = await fetch(`/api/orders/${selectedOrder.id}/status`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    status: backendStatus,
+                    delay_reason: reason || (isQcFail ? `QC Loopback triggered: Sent back to ${backendStatus}` : null),
+                    changed_by: "Operator Logged"
+                })
+            });
+            
+            if (res.ok) {
+                showToast("Success", "Order stage updated successfully.");
+                // Reload order details
+                await openOrderDetail(selectedOrder.id);
+                // Reload list
+                loadOrders();
+                loadMetrics();
+            } else {
+                const err = await res.json();
+                alert("Error: " + err.detail);
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
+    async function triggerAiRefresh() {
+        if (!selectedOrder) return;
+        
+        showToast("Recalculating", "Invoking Eluno AI logic models...", false);
+        try {
+            const res = await fetch(`/api/orders/${selectedOrder.id}/ai-refresh`, { method: 'POST' });
+            if (res.ok) {
+                showToast("AI Refreshed", "Order predictions updated.");
+                openOrderDetail(selectedOrder.id);
+                loadOrders();
+                loadMetrics();
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
+    function closeModal(event) {
+        document.getElementById('detail-modal').classList.remove('active');
+        selectedOrder = null;
+    }
+
+    function resetFilters() {
+        document.getElementById('filter-status').value = '';
+        document.getElementById('filter-lens').value = '';
+        document.getElementById('filter-location').value = '';
+        document.getElementById('filter-risk').value = '';
+        loadOrders();
+    }
+
+    // Helpers
+    function formatDate(isoString) {
+        const d = new Date(isoString);
+        return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+
+    function calculateElapsedHours(isoString) {
+        const created = new Date(isoString);
+        const now = new Date();
+        return (now - created) / (1000 * 60 * 60);
+    }
+
+    function copyText(elementId) {
+        const copyText = document.getElementById(elementId);
+        copyText.select();
+        copyText.setSelectionRange(0, 99999);
+        navigator.clipboard.writeText(copyText.value);
+        showToast("Copied", "Template copy saved to clipboard.");
+    }
+</script>
+{% endblock %}

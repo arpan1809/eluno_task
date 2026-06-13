@@ -1,0 +1,326 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="header-row">
+    <div class="page-title">
+        <h1>Lens Stock & Inventory</h1>
+        <p>Manage in-house semi-finished lens stock levels, coatings, and thickness index metrics.</p>
+    </div>
+</div>
+
+<div class="inventory-grid">
+    <!-- Left Column: Checker Tool and Stock adjustment -->
+    <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+        
+        <!-- Stock Checker Tool -->
+        <div class="glass-card">
+            <h2 style="font-size: 1.15rem; margin-bottom: 1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; color: var(--accent-teal);">🔍 Real-Time Stock Lookup</h2>
+            
+            <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+                    <div class="form-group">
+                        <label style="font-size: 0.8rem;">Lens Type</label>
+                        <select id="check-type" class="filter-select" style="padding: 0.45rem;">
+                            <option value="Single Vision">Single Vision</option>
+                            <option value="Bifocal">Bifocal</option>
+                            <option value="Progressive">Progressive</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label style="font-size: 0.8rem;">Index</label>
+                        <select id="check-index" class="filter-select" style="padding: 0.45rem;">
+                            <option value="1.50">1.50 (Standard)</option>
+                            <option value="1.60">1.60 (Thin)</option>
+                            <option value="1.67">1.67 (Super-Thin)</option>
+                            <option value="1.74">1.74 (Ultra-Thin)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label style="font-size: 0.8rem;">Coating</label>
+                    <select id="check-coating" class="filter-select" style="padding: 0.45rem;">
+                        <option value="Anti-Glare">Anti-Glare</option>
+                        <option value="Blue Cut">Blue Cut</option>
+                        <option value="Photochromic">Photochromic</option>
+                        <option value="None">None</option>
+                    </select>
+                </div>
+                
+                <div style="border-top: 1px solid rgba(255,255,255,0.03); padding-top: 0.75rem;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 0.5rem;">
+                        <div>
+                            <div style="font-weight: 600; font-size: 0.8rem; margin-bottom: 0.4rem; color: var(--accent-blue); display: flex; align-items: center; gap: 0.25rem;">
+                                <span class="eye-badge" style="background: var(--accent-blue); color: #fff; padding: 0.1rem 0.3rem; font-size: 0.7rem;">R</span> Right Eye (O.D.)
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.4rem;">
+                                <div class="form-group">
+                                    <span style="font-size: 0.7rem; color: var(--text-muted); font-weight: 500;">SPH</span>
+                                    <input type="number" id="check-sph-r" class="form-input" style="padding: 0.4rem 0.6rem; font-size: 0.85rem;" placeholder="SPH" step="0.25" value="0.00">
+                                </div>
+                                <div class="form-group">
+                                    <span style="font-size: 0.7rem; color: var(--text-muted); font-weight: 500;">CYL</span>
+                                    <input type="number" id="check-cyl-r" class="form-input" style="padding: 0.4rem 0.6rem; font-size: 0.85rem;" placeholder="CYL" step="0.25" value="0.00">
+                                </div>
+                            </div>
+                        </div>
+                        <div>
+                            <div style="font-weight: 600; font-size: 0.8rem; margin-bottom: 0.4rem; color: var(--accent-teal); display: flex; align-items: center; gap: 0.25rem;">
+                                <span class="eye-badge" style="background: var(--accent-teal); color: #fff; padding: 0.1rem 0.3rem; font-size: 0.7rem;">L</span> Left Eye (O.S.)
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.4rem;">
+                                <div class="form-group">
+                                    <span style="font-size: 0.7rem; color: var(--text-muted); font-weight: 500;">SPH</span>
+                                    <input type="number" id="check-sph-l" class="form-input" style="padding: 0.4rem 0.6rem; font-size: 0.85rem;" placeholder="SPH" step="0.25" value="0.00">
+                                </div>
+                                <div class="form-group">
+                                    <span style="font-size: 0.7rem; color: var(--text-muted); font-weight: 500;">CYL</span>
+                                    <input type="number" id="check-cyl-l" class="form-input" style="padding: 0.4rem 0.6rem; font-size: 0.85rem;" placeholder="CYL" step="0.25" value="0.00">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <button class="btn" onclick="checkStock()" style="padding: 0.5rem; margin-top: 0.5rem;">Check Availability</button>
+                
+                <!-- Lookup Results Box -->
+                <div id="check-result-box" class="stock-feedback-box" style="display: none;">
+                    <div>
+                        <div id="check-result-title" class="stock-status-title">-</div>
+                        <div id="check-result-desc" class="stock-status-desc">-</div>
+                    </div>
+                    <span id="check-result-badge" class="badge">-</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stock Adjustments Form -->
+        <div class="glass-card">
+            <h2 style="font-size: 1.15rem; margin-bottom: 1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; color: var(--accent-teal);">⚙️ Stock Adjustment / Intake</h2>
+            <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+                    <div class="form-group">
+                        <label style="font-size: 0.8rem;">Lens Type</label>
+                        <select id="adj-type" class="filter-select" style="padding: 0.45rem;">
+                            <option value="Single Vision">Single Vision</option>
+                            <option value="Bifocal">Bifocal</option>
+                            <option value="Progressive">Progressive</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label style="font-size: 0.8rem;">Index</label>
+                        <select id="adj-index" class="filter-select" style="padding: 0.45rem;">
+                            <option value="1.50">1.50</option>
+                            <option value="1.60">1.60</option>
+                            <option value="1.67">1.67</option>
+                            <option value="1.74">1.74</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label style="font-size: 0.8rem;">Coating</label>
+                    <select id="adj-coating" class="filter-select" style="padding: 0.45rem;">
+                        <option value="Anti-Glare">Anti-Glare</option>
+                        <option value="Blue Cut">Blue Cut</option>
+                        <option value="Photochromic">Photochromic</option>
+                        <option value="None">None</option>
+                    </select>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.5rem;">
+                    <div class="form-group">
+                        <label style="font-size: 0.8rem;">SPH</label>
+                        <input type="number" id="adj-sph" class="form-input" style="padding: 0.4rem; font-size: 0.85rem;" placeholder="SPH" step="0.25" value="0.00">
+                    </div>
+                    <div class="form-group">
+                        <label style="font-size: 0.8rem;">CYL</label>
+                        <input type="number" id="adj-cyl" class="form-input" style="padding: 0.4rem; font-size: 0.85rem;" placeholder="CYL" step="0.25" value="0.00">
+                    </div>
+                    <div class="form-group">
+                        <label style="font-size: 0.8rem;">Quantity</label>
+                        <input type="number" id="adj-qty" class="form-input" style="padding: 0.4rem; font-size: 0.85rem;" placeholder="Qty" value="10">
+                    </div>
+                </div>
+                <button class="btn" onclick="submitStockUpdate()" style="padding: 0.5rem; margin-top: 0.5rem;">Apply Stock Value</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Column: Current Active Inventory Table -->
+    <div class="glass-card">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; margin-bottom: 1rem;">
+            <h2 style="font-size: 1.15rem; color: var(--accent-teal);">📦 In-Stock Inventory Blanks</h2>
+            <div style="display: flex; gap: 0.5rem;">
+                <select id="tbl-filter-type" class="filter-select" style="padding: 0.25rem 1.5rem 0.25rem 0.5rem; font-size: 0.8rem;" onchange="loadInventoryTable()">
+                    <option value="">All Types</option>
+                    <option value="Single Vision">Single Vision</option>
+                    <option value="Bifocal">Bifocal</option>
+                    <option value="Progressive">Progressive</option>
+                </select>
+                <select id="tbl-filter-coating" class="filter-select" style="padding: 0.25rem 1.5rem 0.25rem 0.5rem; font-size: 0.8rem;" onchange="loadInventoryTable()">
+                    <option value="">All Coatings</option>
+                    <option value="Anti-Glare">Anti-Glare</option>
+                    <option value="Blue Cut">Blue Cut</option>
+                    <option value="Photochromic">Photochromic</option>
+                    <option value="None">None</option>
+                </select>
+            </div>
+        </div>
+        
+        <div class="inventory-table-container">
+            <table class="table-custom" id="inventory-table">
+                <thead>
+                    <tr>
+                        <th>Lens Type</th>
+                        <th>Index</th>
+                        <th>Coating</th>
+                        <th>Power (SPH / CYL)</th>
+                        <th>Qty in Stock</th>
+                    </tr>
+                </thead>
+                <tbody id="inventory-tbody">
+                    <!-- Rendered dynamically -->
+                    <tr>
+                        <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 3rem;">Loading inventory list...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    window.onload = function() {
+        loadInventoryTable();
+    };
+
+    async function loadInventoryTable() {
+        const type = document.getElementById('tbl-filter-type').value;
+        const coating = document.getElementById('tbl-filter-coating').value;
+        
+        let url = '/api/inventory/list?';
+        if (type) url += `lens_type=${encodeURIComponent(type)}&`;
+        if (coating) url += `coating=${encodeURIComponent(coating)}&`;
+        
+        try {
+            const res = await fetch(url);
+            if (res.ok) {
+                const data = await res.json();
+                const tbody = document.getElementById('inventory-tbody');
+                const items = data.inventory;
+                
+                if (items.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 2rem;">No items currently in stock.</td></tr>`;
+                } else {
+                    tbody.innerHTML = items.map(item => `
+                        <tr>
+                            <td style="font-weight: 500;">${item.lens_type}</td>
+                            <td>${item.lens_index.toFixed(2)}</td>
+                            <td>${item.coating}</td>
+                            <td style="font-family: monospace;">SPH ${item.sph.toFixed(2)} | CYL ${item.cyl.toFixed(2)}</td>
+                            <td>
+                                <span class="badge ${item.quantity < 5 ? 'badge-risk-medium' : 'badge-stock-in'}" style="font-size: 0.8rem; font-family: var(--font-heading);">
+                                    ${item.quantity} units
+                                </span>
+                            </td>
+                        </tr>
+                    `).join('');
+                }
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
+    async function checkStock() {
+        const type = document.getElementById('check-type').value;
+        const index = parseFloat(document.getElementById('check-index').value);
+        const coating = document.getElementById('check-coating').value;
+        const sph_r = parseFloat(document.getElementById('check-sph-r').value);
+        const cyl_r = parseFloat(document.getElementById('check-cyl-r').value);
+        const sph_l = parseFloat(document.getElementById('check-sph-l').value);
+        const cyl_l = parseFloat(document.getElementById('check-cyl-l').value);
+
+        const resultBox = document.getElementById('check-result-box');
+        const title = document.getElementById('check-result-title');
+        const desc = document.getElementById('check-result-desc');
+        const badge = document.getElementById('check-result-badge');
+
+        try {
+            const res = await fetch('/api/inventory/check', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    lens_type: type,
+                    lens_index: index,
+                    coating: coating,
+                    sph_right: sph_r,
+                    cyl_right: cyl_r,
+                    sph_left: sph_l,
+                    cyl_left: cyl_l
+                })
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                resultBox.style.display = 'flex';
+                
+                if (data.is_in_stock) {
+                    resultBox.className = 'stock-feedback-box in-stock';
+                    title.textContent = 'Lenses In-House';
+                    desc.textContent = `Right lens qty: ${data.right_lens_quantity} | Left lens qty: ${data.left_lens_quantity}`;
+                    badge.textContent = 'In Stock';
+                    badge.className = 'badge badge-stock-in';
+                    showToast("In Stock", "Lenses are available in the local lab stock.", false);
+                } else {
+                    resultBox.className = 'stock-feedback-box out-stock';
+                    title.textContent = 'Lenses Out-Of-Stock';
+                    desc.textContent = `Right: ${data.right_lens_quantity} units | Left: ${data.left_lens_quantity} units. Will require outsourcing.`;
+                    badge.textContent = 'Out of house';
+                    badge.className = 'badge badge-risk-medium';
+                    showToast("Out of stock", "Lenses require external procurement.", true);
+                }
+            }
+        } catch(e) {
+            console.error(e);
+        }
+    }
+
+    async function submitStockUpdate() {
+        const type = document.getElementById('adj-type').value;
+        const index = parseFloat(document.getElementById('adj-index').value);
+        const coating = document.getElementById('adj-coating').value;
+        const sph = parseFloat(document.getElementById('adj-sph').value);
+        const cyl = parseFloat(document.getElementById('adj-cyl').value);
+        const qty = parseInt(document.getElementById('adj-qty').value);
+
+        if (isNaN(qty) || qty < 0) {
+            alert("Please enter a valid stock quantity.");
+            return;
+        }
+
+        try {
+            const res = await fetch('/api/inventory/update', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    lens_type: type,
+                    lens_index: index,
+                    coating: coating,
+                    sph: sph,
+                    cyl: cyl,
+                    quantity: qty
+                })
+            });
+
+            if (res.ok) {
+                showToast("Stock Updated", `Modified quantities in database.`);
+                loadInventoryTable();
+            } else {
+                alert("Failed to update stock items.");
+            }
+        } catch(e) {
+            console.error(e);
+        }
+    }
+</script>
+{% endblock %}

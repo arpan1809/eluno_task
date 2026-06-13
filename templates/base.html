@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Eluno Eyewear | AI Order Management System</title>
+    
+    <!-- Meta tags for SEO & Metadata -->
+    <meta name="description" content="AI-Powered Order Management System for premium eyewear brand. Tracks lens inventory, status lifecycle, and TAT predictions with SLA breach alerts.">
+    <meta name="robots" content="index, follow">
+    
+    <!-- Fonts and Styling -->
+    <link rel="stylesheet" href="/static/css/style.css?v=1.2">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="brand">
+                <div class="brand-logo">E</div>
+                <div class="brand-name">eluno AI</div>
+            </div>
+            
+            <nav>
+                <ul class="nav-links">
+                    <li class="nav-link" id="nav-dashboard">
+                        <a href="/">
+                            <span>📊</span> Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-link" id="nav-inventory">
+                        <a href="/inventory">
+                            <span>📦</span> Lens Inventory
+                        </a>
+                    </li>
+                    <li class="nav-link" id="nav-intake">
+                        <a href="/order-intake">
+                            <span>✍️</span> Order Intake
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+            
+            <div class="sidebar-footer">
+                <div class="api-status">
+                    <div class="status-dot" id="api-dot"></div>
+                    <span id="api-text">OMS Server: Online</span>
+                </div>
+                <div class="api-status" style="margin-top: 0.25rem;">
+                    <div class="status-dot" id="groq-dot"></div>
+                    <span id="groq-text">AI Mode: Checking...</span>
+                </div>
+            </div>
+        </aside>
+        
+        <!-- Main Content Area -->
+        <main class="main-content">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+
+    <!-- Toast Notification -->
+    <div class="toast" id="toast-notify">
+        <div style="font-weight: 600;" id="toast-title">Success</div>
+        <div style="font-size: 0.85rem;" id="toast-body">Action completed.</div>
+    </div>
+
+    <script>
+        // Set active nav link highlighting
+        const path = window.location.pathname;
+        if (path === '/' || path === '') {
+            document.getElementById('nav-dashboard').classList.add('active');
+        } else if (path === '/inventory') {
+            document.getElementById('nav-inventory').classList.add('active');
+        } else if (path === '/order-intake') {
+            document.getElementById('nav-intake').classList.add('active');
+        }
+
+        // Global Toast Notification Utility
+        window.showToast = function(title, message, isError = false) {
+            const toast = document.getElementById('toast-notify');
+            const titleEl = document.getElementById('toast-title');
+            const bodyEl = document.getElementById('toast-body');
+            
+            titleEl.textContent = title;
+            bodyEl.textContent = message;
+            
+            if (isError) {
+                toast.style.borderColor = 'var(--color-high)';
+                toast.style.borderLeftColor = 'var(--color-high)';
+            } else {
+                toast.style.borderColor = 'var(--accent-teal)';
+                toast.style.borderLeftColor = 'var(--accent-teal)';
+            }
+            
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3500);
+        };
+
+        // Check Backend & Groq API configuration state
+        async function checkSystemStatus() {
+            try {
+                const res = await fetch('/api/status');
+                if (res.ok) {
+                    const data = await res.json();
+                    document.getElementById('api-dot').style.backgroundColor = 'var(--color-low)';
+                    document.getElementById('api-text').textContent = 'Server: Online';
+                    
+                    const groqDot = document.getElementById('groq-dot');
+                    const groqText = document.getElementById('groq-text');
+                    if (data.groq_configured) {
+                        groqDot.style.backgroundColor = 'var(--color-low)';
+                        groqText.textContent = 'AI Mode: Groq Live';
+                        groqText.title = data.groq_model;
+                    } else {
+                        groqDot.style.backgroundColor = 'var(--color-medium)';
+                        groqText.textContent = 'AI Mode: Simulation';
+                        groqText.title = 'Local rules active';
+                    }
+                }
+            } catch (err) {
+                document.getElementById('api-dot').style.backgroundColor = 'var(--color-high)';
+                document.getElementById('api-text').textContent = 'Server: Disconnected';
+                document.getElementById('groq-dot').style.backgroundColor = 'var(--text-muted)';
+                document.getElementById('groq-text').textContent = 'AI Mode: Offline';
+            }
+        }
+        
+        checkSystemStatus();
+        setInterval(checkSystemStatus, 10000);
+    </script>
+</body>
+</html>

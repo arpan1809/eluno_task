@@ -1,0 +1,238 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="header-row">
+    <div class="page-title">
+        <h1>Order Intake Form</h1>
+        <p>Register new patient orders, record prescriptions, and automatically run lens inventory validation.</p>
+    </div>
+    <div>
+        <a href="/" class="btn btn-secondary"><span>←</span> Back to Dashboard</a>
+    </div>
+</div>
+
+<div style="max-width: 800px; margin: 0 auto;">
+    <form id="order-intake-form" onsubmit="submitNewOrder(event)" class="glass-card" style="padding: 2.5rem; display: flex; flex-direction: column; gap: 1.5rem;">
+        
+        <h2 style="font-size: 1.25rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; color: var(--accent-teal);">📋 Patient & Store Metadata</h2>
+        
+        <div class="form-grid">
+            <div class="form-group">
+                <label for="customer_name">Patient Customer Name</label>
+                <input type="text" id="customer_name" class="form-input" required placeholder="e.g. Johnathan Doe">
+            </div>
+            <div class="form-group">
+                <label for="store_location">Store Location Source</label>
+                <select id="store_location" class="filter-select" style="padding: 0.75rem 1rem;" required>
+                    <option value="Downtown">Downtown Store</option>
+                    <option value="Uptown">Uptown Store</option>
+                    <option value="Westside">Westside Store</option>
+                    <option value="Eastside">Eastside Store</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="frame">Frame Model</label>
+                <input type="text" id="frame" class="form-input" required placeholder="e.g. Acetate Tortoise Oval">
+            </div>
+            <div class="form-group">
+                <label for="lens_type">Lens Profile Type</label>
+                <select id="lens_type" class="filter-select" style="padding: 0.75rem 1rem;" onchange="triggerLiveStockCheck()" required>
+                    <option value="Single Vision">Single Vision (SLA: 72h)</option>
+                    <option value="Bifocal">Bifocal (SLA: 96h)</option>
+                    <option value="Progressive">Progressive (SLA: 120h)</option>
+                </select>
+            </div>
+        </div>
+
+        <h2 style="font-size: 1.25rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; margin-top: 1rem; color: var(--accent-teal);">🧪 Prescription Parameters</h2>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1.2fr; gap: 2rem;">
+            <!-- Lens Details -->
+            <div style="display: flex; flex-direction: column; gap: 1rem;">
+                <div class="form-group">
+                    <label for="lens_index">Refractive Index (Thickness)</label>
+                    <select id="lens_index" class="filter-select" style="padding: 0.75rem 1rem;" onchange="triggerLiveStockCheck()" required>
+                        <option value="1.50">1.50 Index (Standard)</option>
+                        <option value="1.60">1.60 Index (Thin)</option>
+                        <option value="1.67">1.67 Index (Super-Thin)</option>
+                        <option value="1.74">1.74 Index (Ultra-Thin)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="coating">Lens Treatment Coating</label>
+                    <select id="coating" class="filter-select" style="padding: 0.75rem 1rem;" onchange="triggerLiveStockCheck()" required>
+                        <option value="Anti-Glare">Anti-Glare</option>
+                        <option value="Blue Cut">Blue Cut</option>
+                        <option value="Photochromic">Photochromic</option>
+                        <option value="None">None</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Eye SPH/CYL/AXIS Inputs -->
+            <div style="display: flex; flex-direction: column; gap: 1.25rem;">
+                <!-- Right Eye -->
+                <div>
+                    <div style="font-weight: 600; font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                        <span class="eye-badge" style="background: var(--accent-blue); color: #fff;">R</span> Right Eye (O.D.)
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.5rem;">
+                        <div class="form-group">
+                            <span style="font-size: 0.72rem; color: var(--text-muted); font-weight: 500;">SPH (Sphere)</span>
+                            <input type="number" id="sph_right" class="form-input" required step="0.25" value="0.00" onchange="triggerLiveStockCheck()" placeholder="SPH" style="padding: 0.5rem 0.75rem;">
+                        </div>
+                        <div class="form-group">
+                            <span style="font-size: 0.72rem; color: var(--text-muted); font-weight: 500;">CYL (Cylinder)</span>
+                            <input type="number" id="cyl_right" class="form-input" required step="0.25" value="0.00" onchange="triggerLiveStockCheck()" placeholder="CYL" style="padding: 0.5rem 0.75rem;">
+                        </div>
+                        <div class="form-group">
+                            <span style="font-size: 0.72rem; color: var(--text-muted); font-weight: 500;">AXIS (Degrees)</span>
+                            <input type="number" id="axis_right" class="form-input" required min="0" max="180" value="0" placeholder="AXIS" style="padding: 0.5rem 0.75rem;">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Left Eye -->
+                <div>
+                    <div style="font-weight: 600; font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                        <span class="eye-badge" style="background: var(--accent-teal); color: #fff;">L</span> Left Eye (O.S.)
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.5rem;">
+                        <div class="form-group">
+                            <span style="font-size: 0.72rem; color: var(--text-muted); font-weight: 500;">SPH (Sphere)</span>
+                            <input type="number" id="sph_left" class="form-input" required step="0.25" value="0.00" onchange="triggerLiveStockCheck()" placeholder="SPH" style="padding: 0.5rem 0.75rem;">
+                        </div>
+                        <div class="form-group">
+                            <span style="font-size: 0.72rem; color: var(--text-muted); font-weight: 500;">CYL (Cylinder)</span>
+                            <input type="number" id="cyl_left" class="form-input" required step="0.25" value="0.00" onchange="triggerLiveStockCheck()" placeholder="CYL" style="padding: 0.5rem 0.75rem;">
+                        </div>
+                        <div class="form-group">
+                            <span style="font-size: 0.72rem; color: var(--text-muted); font-weight: 500;">AXIS (Degrees)</span>
+                            <input type="number" id="axis_left" class="form-input" required min="0" max="180" value="0" placeholder="AXIS" style="padding: 0.5rem 0.75rem;">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Live Inventory Alert Card -->
+        <div id="intake-stock-card" class="stock-feedback-box" style="margin-top: 1rem;">
+            <div>
+                <div id="intake-stock-title" class="stock-status-title">Checking Inventory Availability...</div>
+                <div id="intake-stock-desc" class="stock-status-desc">Adjust prescriptions to test stock levels.</div>
+            </div>
+            <span id="intake-stock-badge" class="badge" style="background: rgba(255,255,255,0.05); color: var(--text-secondary);">Verifying</span>
+        </div>
+
+        <div style="display: flex; gap: 1rem; margin-top: 1rem; border-top: 1px solid var(--border-color); padding-top: 1.5rem; justify-content: flex-end;">
+            <button type="reset" class="btn btn-secondary">Reset Form</button>
+            <button type="submit" class="btn">Register Order & Run AI TAT</button>
+        </div>
+    </form>
+</div>
+
+<script>
+    // Trigger on load
+    window.onload = function() {
+        triggerLiveStockCheck();
+    };
+
+    let debounceTimer;
+    function triggerLiveStockCheck() {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(async () => {
+            const lens_type = document.getElementById('lens_type').value;
+            const index = parseFloat(document.getElementById('lens_index').value);
+            const coating = document.getElementById('coating').value;
+            
+            const sph_r = parseFloat(document.getElementById('sph_right').value || 0);
+            const cyl_r = parseFloat(document.getElementById('cyl_right').value || 0);
+            const sph_l = parseFloat(document.getElementById('sph_left').value || 0);
+            const cyl_l = parseFloat(document.getElementById('cyl_left').value || 0);
+
+            const card = document.getElementById('intake-stock-card');
+            const title = document.getElementById('intake-stock-title');
+            const desc = document.getElementById('intake-stock-desc');
+            const badge = document.getElementById('intake-stock-badge');
+
+            try {
+                const res = await fetch('/api/inventory/check', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        lens_type: lens_type,
+                        lens_index: index,
+                        coating: coating,
+                        sph_right: sph_r,
+                        cyl_right: cyl_r,
+                        sph_left: sph_l,
+                        cyl_left: cyl_l
+                    })
+                });
+
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.is_in_stock) {
+                        card.className = 'stock-feedback-box in-stock';
+                        title.textContent = '✓ Lens Blanks In-Stock (In-House)';
+                        desc.textContent = `Right lens qty: ${data.right_lens_quantity} | Left lens qty: ${data.left_lens_quantity}. SLA prioritized immediately.`;
+                        badge.textContent = 'Ready';
+                        badge.className = 'badge badge-stock-in';
+                    } else {
+                        card.className = 'stock-feedback-box out-stock';
+                        title.textContent = '⚠ Lens Blanks Unavailable (Out-Of-Stock)';
+                        desc.textContent = `Right: ${data.right_lens_quantity} | Left: ${data.left_lens_quantity} matching items. Custom lab surfacing or vendor order required (+24h impact).`;
+                        badge.textContent = 'Custom Order';
+                        badge.className = 'badge badge-risk-medium';
+                    }
+                }
+            } catch(e) {
+                console.error(e);
+            }
+        }, 300); // Debounce checks
+    }
+
+    async function submitNewOrder(event) {
+        event.preventDefault();
+        
+        const customer_name = document.getElementById('customer_name').value;
+        const store_location = document.getElementById('store_location').value;
+        const frame = document.getElementById('frame').value;
+        const lens_type = document.getElementById('lens_type').value;
+        const lens_index = parseFloat(document.getElementById('lens_index').value);
+        const coating = document.getElementById('coating').value;
+        
+        const sph_right = parseFloat(document.getElementById('sph_right').value || 0);
+        const cyl_right = parseFloat(document.getElementById('cyl_right').value || 0);
+        const axis_right = parseInt(document.getElementById('axis_right').value || 0);
+        
+        const sph_left = parseFloat(document.getElementById('sph_left').value || 0);
+        const cyl_left = parseFloat(document.getElementById('cyl_left').value || 0);
+        const axis_left = parseInt(document.getElementById('axis_left').value || 0);
+
+        try {
+            const res = await fetch('/api/orders', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    customer_name, store_location, frame, lens_type, lens_index, coating,
+                    sph_right, cyl_right, axis_right, sph_left, cyl_left, axis_left
+                })
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                const stockMsg = data.is_in_stock ? "Stock allocated." : "Out-of-house surfacing queued.";
+                alert(`Order registered successfully! Number: ${data.order_number}. ${stockMsg}`);
+                window.location.href = '/';
+            } else {
+                const err = await res.json();
+                alert("Error registering order: " + (err.detail || "Server error"));
+            }
+        } catch(e) {
+            console.error(e);
+            alert("Connection error occurred.");
+        }
+    }
+</script>
+{% endblock %}
